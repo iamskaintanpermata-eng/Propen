@@ -1,0 +1,136 @@
+// Prisma Schema for SIPES UNAND (MySQL Production)
+// Berdasarkan ERD dan Class Diagram resmi
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Pengguna {
+  id_pengguna   String   @id @db.VarChar(15) @map("id_pengguna")
+  username      String   @unique @db.VarChar(50) @map("username")
+  password      String   @db.VarChar(255) @map("password")
+  nama_lengkap  String   @db.VarChar(100) @map("nama_lengkap")
+  nomor_kontak  String   @db.VarChar(20) @map("nomor_kontak")
+  peran         String   @db.VarChar(20) @map("peran") // 'admin', 'petugas_gedung', 'sopir_bentor'
+  created_at    DateTime @default(now()) @map("created_at")
+
+  laporan_dibuat         LaporanSampah[]         @relation("PetugasLaporan")
+  penugasan_dikelola     PenugasanPengangkutan[] @relation("AdminPenugasan")
+  penugasan_dikendarai   PenugasanPengangkutan[] @relation("SopirPenugasan")
+  verifikasi_pembuangan  LogPembuanganAkhir[]    @relation("AdminVerifikator")
+
+  @@map("PENGGUNA")
+}
+
+model Gedung {
+  id_gedung       String   @id @db.VarChar(10) @map("id_gedung")
+  nama_gedung     String   @db.VarChar(100) @map("nama_gedung")
+  fakultas        String   @db.VarChar(100) @map("fakultas")
+  koordinat_lat   Float    @map("koordinat_lat")
+  koordinat_long  Float    @map("koordinat_long")
+  kapasitas_tps   Int      @map("kapasitas_tps")
+
+  laporan_sampah  LaporanSampah[]
+
+  @@map("GEDUNG")
+}
+
+model ArmadaBentor {
+  id_bentor               String   @id @db.VarChar(10) @map("id_bentor")
+  plat_nomor              String   @unique @db.VarChar(20) @map("plat_nomor")
+  kapasitas_maks_kantong  Int      @map("kapasitas_maks_kantong")
+  status_operasional      String   @default("tersedia") @db.VarChar(20) @map("status_operasional")
+
+  penugasan               PenugasanPengangkutan[]
+
+  @@map("ARMADA_BENTOR")
+}
+
+model LaporanSampah {
+  id_laporan       String   @id @db.VarChar(20) @map("id_laporan")
+  id_gedung        String   @db.VarChar(10) @map("id_gedung")
+  id_petugas       String   @db.VarChar(15) @map("id_petugas")
+  tanggal_lapor    DateTime @default(now()) @map("tanggal_lapor")
+  jumlah_kantong   Int      @map("jumlah_kantong")
+  kondisi_sampah   String   @db.VarChar(30) @map("kondisi_sampah")
+  catatan          String?  @db.Text @map("catatan")
+  url_foto_sampah  String   @db.VarChar(255) @map("url_foto_sampah")
+  status_laporan   String   @default("Menunggu Penugasan") @db.VarChar(30) @map("status_laporan")
+
+  gedung           Gedung                 @relation(fields: [id_gedung], references: [id_gedung], onDelete: Cascade)
+  petugas          Pengguna               @relation("PetugasLaporan", fields: [id_petugas], references: [id_pengguna], onDelete: Cascade)
+  detail_penugasan DetailPenugasan[]
+
+  @@map("LAPORAN_SAMPAH")
+}
+
+model PenugasanPengangkutan {
+  id_penugasan           String   @id @db.VarChar(20) @map("id_penugasan")
+  id_admin               String   @db.VarChar(15) @map("id_admin")
+  id_sopir               String   @db.VarChar(15) @map("id_sopir")
+  id_bentor              String   @db.VarChar(10) @map("id_bentor")
+  tanggal_penugasan      DateTime @default(now()) @map("tanggal_penugasan")
+  total_rencana_kantong  Int      @map("total_rencana_kantong")
+  estimasi_jarak_km      Float?   @map("estimasi_jarak_km")
+  nama_lokasi_tpa_target String   @default("TPA Kampus Unand") @db.VarChar(100) @map("nama_lokasi_tpa_target")
+  status_tugas           String   @default("Ditugaskan") @db.VarChar(30) @map("status_tugas")
+
+  admin                  Pengguna             @relation("AdminPenugasan", fields: [id_admin], references: [id_pengguna])
+  sopir                  Pengguna             @relation("SopirPenugasan", fields: [id_sopir], references: [id_pengguna])
+  bentor                 ArmadaBentor         @relation(fields: [id_bentor], references: [id_bentor])
+  detail_penugasan       DetailPenugasan[]
+  log_pembuangan_akhir   LogPembuanganAkhir?
+
+  @@map("PENUGASAN_PENGANGKUTAN")
+}
+
+model DetailPenugasan {
+  id_detail       String   @id @db.VarChar(20) @map("id_detail")
+  id_penugasan    String   @db.VarChar(20) @map("id_penugasan")
+  id_laporan      String   @db.VarChar(20) @map("id_laporan")
+  urutan_singgah  Int      @map("urutan_singgah")
+  status_singgah  String   @default("Menunggu") @db.VarChar(20) @map("status_singgah")
+
+  penugasan       PenugasanPengangkutan @relation(fields: [id_penugasan], references: [id_penugasan], onDelete: Cascade)
+  laporan         LaporanSampah         @relation(fields: [id_laporan], references: [id_laporan], onDelete: Cascade)
+  log_penjemputan LogPenjemputan?
+
+  @@map("DETAIL_PENUGASAN")
+}
+
+model LogPenjemputan {
+  id_log_jemput          String   @id @db.VarChar(20) @map("id_log_jemput")
+  id_detail              String   @unique @db.VarChar(20) @map("id_detail")
+  waktu_jemput           DateTime @default(now()) @map("waktu_jemput")
+  jumlah_kantong_aktual  Int      @map("jumlah_kantong_aktual")
+  url_foto_jemput        String   @db.VarChar(255) @map("url_foto_jemput")
+  catatan                String?  @db.Text @map("catatan")
+
+  detail                 DetailPenugasan @relation(fields: [id_detail], references: [id_detail], onDelete: Cascade)
+
+  @@map("LOG_PENJEMPUTAN")
+}
+
+model LogPembuanganAkhir {
+  id_log_buang            String   @id @db.VarChar(20) @map("id_log_buang")
+  id_penugasan            String   @unique @db.VarChar(20) @map("id_penugasan")
+  id_admin_verifikator    String?  @db.VarChar(15) @map("id_admin_verifikator")
+  waktu_buang             DateTime @default(now()) @map("waktu_buang")
+  nama_lokasi_tpa         String   @db.VarChar(100) @map("nama_lokasi_tpa")
+  koordinat_lat_tpa       Float    @map("koordinat_lat_tpa")
+  koordinat_long_tpa      Float    @map("koordinat_long_tpa")
+  jumlah_kantong_dibuang  Int      @map("jumlah_kantong_dibuang")
+  url_foto_bukti_tpa      String   @db.VarChar(255) @map("url_foto_bukti_tpa")
+  status_verifikasi       String   @default("Menunggu Verifikasi") @db.VarChar(30) @map("status_verifikasi")
+  catatan_verifikasi      String?  @db.Text @map("catatan_verifikasi")
+
+  penugasan               PenugasanPengangkutan @relation(fields: [id_penugasan], references: [id_penugasan], onDelete: Cascade)
+  admin_verifikator       Pengguna?             @relation("AdminVerifikator", fields: [id_admin_verifikator], references: [id_pengguna])
+
+  @@map("LOG_PEMBUANGAN_AKHIR")
+}

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" fill="none">
+  <defs>
+    <linearGradient id="sky" x1="380" y1="0" x2="380" y2="300" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E9F5EC"/>
+      <stop offset="1" stop-color="#B9DCC4"/>
+    </linearGradient>
+    <linearGradient id="building" x1="380" y1="78" x2="380" y2="265" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBFFF9"/>
+      <stop offset="1" stop-color="#D8E9D9"/>
+    </linearGradient>
+    <linearGradient id="hill" x1="380" y1="188" x2="380" y2="300" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8FC69A"/>
+      <stop offset="1" stop-color="#4F9B6B"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#sky)" d="M0 0h760v300H0z"/>
+  <circle cx="625" cy="64" r="30" fill="#FFF6CF" opacity=".8"/>
+  <path d="M0 203c93-42 174-38 260-2 67 28 135 20 203-10 102-45 202-48 297-3v112H0z" fill="#B5D9BC"/>
+  <path d="M0 240c111-46 191-45 290-8 95 35 159 32 244-1 75-30 149-39 226-13v82H0z" fill="url(#hill)"/>
+  <path d="M164 265V153h432v112H164Z" fill="url(#building)" stroke="#6D9A78" stroke-width="3"/>
+  <path d="M145 158h470l-46-27H190l-45 27Z" fill="#557E60"/>
+  <path d="m210 132 28-43 28 43M334 132l28-52 28 52M457 132l28-43 28 43" fill="#F8FFF7" stroke="#557E60" stroke-width="5" stroke-linejoin="round"/>
+  <path d="m217 125 21-33 21 33m82 0 23-45 23 45m59 0 21-33 21 33" stroke="#94B59A" stroke-width="3" stroke-linecap="round"/>
+  <path d="M273 265v-83h214v83" fill="#EDF5EC" stroke="#88A990" stroke-width="2"/>
+  <path d="M351 265v-48a29 29 0 0 1 58 0v48" fill="#507E60"/>
+  <path d="M186 171h42v40h-42zm0 57h42v37h-42zm65-57h41v40h-41zm0 57h41v37h-41zm281-57h42v40h-42zm0 57h42v37h-42zm-66-57h41v40h-41zm0 57h41v37h-41z" fill="#B8D7BE"/>
+  <path d="M207 177h1v27h-1zm65 0h1v27h-1zm-65 57h1v26h-1zm65 0h1v26h-1zm221-57h1v27h-1zm66 0h1v27h-1zm-66 57h1v26h-1zm66 0h1v26h-1z" fill="#6F9B78"/>
+  <path d="M67 264v-42m0 9c-21-5-26-19-26-19 18-2 28 7 28 18m-2-2c2-20 18-29 18-29 5 17-2 29-16 35m540 30v-49m0 16c-24-6-29-24-29-24 19-1 31 10 31 22m-3-3c2-22 20-32 20-32 5 19-3 32-18 39" stroke="#387B53" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M0 276c138-26 238-18 350 0 135 22 266 20 410-7v31H0z" fill="#3E865B" opacity=".72"/>
+</svg>
