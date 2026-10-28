@@ -17,6 +17,7 @@ model Pengguna {
   nama_lengkap  String   @db.VarChar(100) @map("nama_lengkap")
   nomor_kontak  String   @db.VarChar(20) @map("nomor_kontak")
   peran         String   @db.VarChar(20) @map("peran") // 'admin', 'petugas_gedung', 'sopir_bentor'
+  status_akun   String   @default("aktif") @db.VarChar(20) @map("status_akun")
   created_at    DateTime @default(now()) @map("created_at")
 
   laporan_dibuat         LaporanSampah[]         @relation("PetugasLaporan")
@@ -59,8 +60,8 @@ model LaporanSampah {
   jumlah_kantong   Int      @map("jumlah_kantong")
   kondisi_sampah   String   @db.VarChar(30) @map("kondisi_sampah")
   catatan          String?  @db.Text @map("catatan")
-  url_foto_sampah  String   @db.VarChar(255) @map("url_foto_sampah")
-  status_laporan   String   @default("Menunggu Penugasan") @db.VarChar(30) @map("status_laporan")
+  url_foto_sampah  String?  @db.VarChar(255) @map("url_foto_sampah")
+  status_laporan   String   @default("Menunggu Akumulasi") @db.VarChar(30) @map("status_laporan")
 
   gedung           Gedung                 @relation(fields: [id_gedung], references: [id_gedung], onDelete: Cascade)
   petugas          Pengguna               @relation("PetugasLaporan", fields: [id_petugas], references: [id_pengguna], onDelete: Cascade)
@@ -71,17 +72,20 @@ model LaporanSampah {
 
 model PenugasanPengangkutan {
   id_penugasan           String   @id @db.VarChar(20) @map("id_penugasan")
-  id_admin               String   @db.VarChar(15) @map("id_admin")
-  id_sopir               String   @db.VarChar(15) @map("id_sopir")
+  id_admin               String?  @db.VarChar(15) @map("id_admin")
+  id_sopir               String?  @db.VarChar(15) @map("id_sopir")
   id_bentor              String   @db.VarChar(10) @map("id_bentor")
   tanggal_penugasan      DateTime @default(now()) @map("tanggal_penugasan")
   total_rencana_kantong  Int      @map("total_rencana_kantong")
   estimasi_jarak_km      Float?   @map("estimasi_jarak_km")
   nama_lokasi_tpa_target String   @default("TPA Kampus Unand") @db.VarChar(100) @map("nama_lokasi_tpa_target")
-  status_tugas           String   @default("Ditugaskan") @db.VarChar(30) @map("status_tugas")
+  koordinat_lat_sopir    Float?   @map("koordinat_lat_sopir")
+  koordinat_long_sopir   Float?   @map("koordinat_long_sopir")
+  waktu_lokasi_sopir     DateTime? @map("waktu_lokasi_sopir")
+  status_tugas           String   @default("Menunggu Sopir") @db.VarChar(30) @map("status_tugas")
 
-  admin                  Pengguna             @relation("AdminPenugasan", fields: [id_admin], references: [id_pengguna])
-  sopir                  Pengguna             @relation("SopirPenugasan", fields: [id_sopir], references: [id_pengguna])
+  admin                  Pengguna?            @relation("AdminPenugasan", fields: [id_admin], references: [id_pengguna])
+  sopir                  Pengguna?            @relation("SopirPenugasan", fields: [id_sopir], references: [id_pengguna])
   bentor                 ArmadaBentor         @relation(fields: [id_bentor], references: [id_bentor])
   detail_penugasan       DetailPenugasan[]
   log_pembuangan_akhir   LogPembuanganAkhir?

@@ -20,7 +20,7 @@
    npm run setup:db
    ```
 
-   Database baru berisi akun dan data referensi gedung/armada. Laporan, penugasan, serta riwayat tetap kosong sampai Anda menjalankan simulasi. Seed dilewati jika basis data sudah memiliki pengguna, sehingga data yang sudah ada tidak dihapus.
+   Database baru berisi akun dan data referensi gedung/armada. Seed dilewati jika basis data sudah memiliki pengguna, sehingga data yang sudah ada tidak dihapus.
 5. Jalankan frontend dan backend bersama-sama:
 
    ```powershell
@@ -41,13 +41,28 @@ Untuk menjalankan frontend atau backend secara terpisah gunakan `npm run dev:fro
 
 ## Alur operasional
 
-- **Petugas gedung:** masuk, buat laporan untuk gedung, isi kondisi/jumlah kantong, dan ambil foto bukti langsung dengan kamera.
-- **Admin:** pantau laporan dan peta, pilih laporan tertunda, lalu tugaskan ke sopir dan armada yang tersedia; verifikasi bukti pembuangan. Admin tidak membuat laporan sampah.
-- **Sopir bentor:** lihat tugas yang diberikan, mulai perjalanan, ambil foto bukti pembuangan akhir langsung dengan kamera, dan kirim koordinat GPS.
+- **Petugas gedung:** buat laporan dengan gedung, jumlah kantong, kondisi, dan catatan. Foto laporan opsional; laporan baru masuk status **Menunggu Akumulasi**.
+- **Akumulasi otomatis:** laporan FIFO digabungkan hingga mencapai 80% kapasitas bentor yang tersedia, tanpa melebihi kapasitas. Sistem memilih urutan titik jemput terdekat dan membuat satu penugasan untuk beberapa gedung.
+- **Sopir bentor:** ambil satu penugasan yang tersedia, jalankan perjalanan, konfirmasi jumlah aktual dan foto di setiap gedung, lalu menuju PPST UNAND untuk mengirim bukti pembuangan.
+- **Admin:** pantau laporan, armada, rute, posisi GPS sopir, bukti pengambilan, dan bukti pembuangan; admin memverifikasi pembuangan dan tidak membuat penugasan manual.
 
-Izinkan akses kamera dan lokasi pada peramban saat diminta. Kamera tersedia melalui `localhost` atau HTTPS. Foto JPG dibatasi 8 MB dan disimpan di folder `uploads`. Peta memakai tile OpenStreetMap dan membutuhkan koneksi internet; koordinat gedung bersumber dari basis data SIPES.
+Izinkan akses kamera dan lokasi pada peramban saat diminta. Kamera tersedia melalui `localhost` atau HTTPS. Foto dibatasi 8 MB dan disimpan di folder `uploads`. Peta satelit memakai Esri World Imagery, peta jalan memakai OpenStreetMap, dan rute jalan memakai layanan OSRM; semuanya membutuhkan koneksi internet. Gunakan pemilih layer di pojok kanan atas peta untuk beralih antara tampilan satelit dan peta jalan.
+
+Pilihan gedung dan titik peta diambil dari tabel gedung. Database lokal saat ini berisi enam titik seed; masukkan nama dan koordinat resmi Gedung Perkuliahan A–J sebelum operasional agar laporan dan rute memakai lokasi yang benar.
+
+Sebelum sopir dapat menyelesaikan perjalanan, isi koordinat PPST UNAND yang benar pada `backend\.env`:
+
+```dotenv
+AUTO_ASSIGNMENT_LOAD_PERCENT=80
+OFFICIAL_DISPOSAL_NAME="PPST UNAND"
+OFFICIAL_DISPOSAL_LATITUDE=-0.915703
+OFFICIAL_DISPOSAL_LONGITUDE=100.463788
+OFFICIAL_DISPOSAL_RADIUS_METERS=100
+```
+
+Gedung A–J dan PPST UNAND menggunakan koordinat yang telah dikonfirmasi untuk SIPES.
 
 ## Teknologi
 
-- React, TypeScript, Vite, Leaflet / OpenStreetMap
+- React, TypeScript, Vite, Leaflet / Esri World Imagery / OpenStreetMap
 - Express, Prisma, SQLite, JWT

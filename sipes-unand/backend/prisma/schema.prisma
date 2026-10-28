@@ -17,6 +17,7 @@ model Pengguna {
   nama_lengkap  String   @map("nama_lengkap")
   nomor_kontak  String   @map("nomor_kontak")
   peran         String   @map("peran") // 'admin', 'petugas_gedung', 'sopir_bentor'
+  status_akun   String   @default("aktif") @map("status_akun")
   created_at    DateTime @default(now()) @map("created_at")
 
   // Relasi
@@ -62,8 +63,8 @@ model LaporanSampah {
   jumlah_kantong   Int      @map("jumlah_kantong")
   kondisi_sampah   String   @map("kondisi_sampah") // 'Normal', 'Hampir Penuh', 'Penuh', 'Mendesak'
   catatan          String?  @map("catatan")
-  url_foto_sampah  String   @map("url_foto_sampah")
-  status_laporan   String   @default("Menunggu Penugasan") @map("status_laporan") // 'Menunggu Penugasan', 'Ditugaskan', 'Selesai'
+  url_foto_sampah  String?  @map("url_foto_sampah")
+  status_laporan   String   @default("Menunggu Akumulasi") @map("status_laporan") // 'Menunggu Akumulasi', 'Masuk Penugasan', 'Dijemput', 'Selesai'
 
   // Relasi
   gedung           Gedung                 @relation(fields: [id_gedung], references: [id_gedung], onDelete: Cascade)
@@ -75,18 +76,21 @@ model LaporanSampah {
 
 model PenugasanPengangkutan {
   id_penugasan           String   @id @map("id_penugasan")
-  id_admin               String   @map("id_admin")
-  id_sopir               String   @map("id_sopir")
+  id_admin               String?  @map("id_admin")
+  id_sopir               String?  @map("id_sopir")
   id_bentor              String   @map("id_bentor")
   tanggal_penugasan      DateTime @default(now()) @map("tanggal_penugasan")
   total_rencana_kantong  Int      @map("total_rencana_kantong")
   estimasi_jarak_km      Float?   @map("estimasi_jarak_km")
   nama_lokasi_tpa_target String   @default("TPA Kampus Unand") @map("nama_lokasi_tpa_target")
-  status_tugas           String   @default("Ditugaskan") @map("status_tugas") // 'Ditugaskan', 'Dalam Proses', 'Selesai', 'Terverifikasi'
+  koordinat_lat_sopir    Float?   @map("koordinat_lat_sopir")
+  koordinat_long_sopir   Float?   @map("koordinat_long_sopir")
+  waktu_lokasi_sopir     DateTime? @map("waktu_lokasi_sopir")
+  status_tugas           String   @default("Menunggu Sopir") @map("status_tugas") // 'Menunggu Sopir', 'Diambil Sopir', 'Dalam Perjalanan', 'Penjemputan', 'Menuju Pembuangan', 'Menunggu Verifikasi', 'Terverifikasi'
 
   // Relasi
-  admin                  Pengguna             @relation("AdminPenugasan", fields: [id_admin], references: [id_pengguna])
-  sopir                  Pengguna             @relation("SopirPenugasan", fields: [id_sopir], references: [id_pengguna])
+  admin                  Pengguna?            @relation("AdminPenugasan", fields: [id_admin], references: [id_pengguna])
+  sopir                  Pengguna?            @relation("SopirPenugasan", fields: [id_sopir], references: [id_pengguna])
   bentor                 ArmadaBentor         @relation(fields: [id_bentor], references: [id_bentor])
   detail_penugasan       DetailPenugasan[]
   log_pembuangan_akhir   LogPembuanganAkhir?

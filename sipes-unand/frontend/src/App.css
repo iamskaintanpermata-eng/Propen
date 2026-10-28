@@ -1095,6 +1095,11 @@ td > small span {
   background: #eef5fb;
 }
 
+.status-assigned,
+.status-waiting {
+  line-height: 1.4;
+}
+
 .status-waiting {
   color: #b37a36;
   background: #fff6e9;
@@ -2825,6 +2830,11 @@ td > small span {
   border-radius: 11px;
 }
 
+.map-panel-compact .campus-map {
+  height: 310px;
+  min-height: 250px;
+}
+
 .campus-map {
   z-index: 1;
   width: 100%;
@@ -2848,7 +2858,7 @@ td > small span {
   border: 1px solid #e7eee8;
   border-radius: 6px;
   box-shadow: 0 2px 8px #19362113;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .map-attribution-note > span {
@@ -2860,6 +2870,13 @@ td > small span {
 
 .map-attribution-note strong {
   color: #4a5a4f;
+}
+
+.map-attribution-note a {
+  margin-left: 5px;
+  color: #218653;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .map-marker-wrapper {
@@ -2892,6 +2909,14 @@ td > small span {
 
 .map-marker.urgent {
   background: #d86456;
+}
+
+.map-marker-destination {
+  background: #8055bd;
+}
+
+.map-marker-driver {
+  background: #3478c5;
 }
 
 .map-popup {
@@ -2936,6 +2961,23 @@ td > small span {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+}
+
+.legend-purple {
+  background: #8055bd;
+}
+
+.legend-blue {
+  background: #3478c5;
+}
+
+.map-route-error {
+  padding: 9px 13px;
+  color: #8a6625;
+  font-size: 10px;
+  line-height: 1.5;
+  background: #fff8e7;
+  border-top: 1px solid #f1e4c4;
 }
 
 .legend-green {
@@ -3626,5 +3668,320 @@ tbody tr:hover {
   .stat-card,
   .dashboard-shortcuts > button {
     transition: none;
+  }
+}
+
+.brand-mark {
+  overflow: hidden;
+  background: #fff;
+}
+
+.brand-logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.signout-button {
+  margin-top: 8px;
+}
+
+.login-brand-panel {
+  background:
+    linear-gradient(145deg, #123b2beF 0%, #174d34d9 55%, #22623ebf 100%),
+    url('/unand-campus-photo.png') center / cover no-repeat;
+}
+
+.login-brand .brand-mark {
+  width: 43px;
+  height: 43px;
+  padding: 2px;
+  border-radius: 9px;
+}
+
+.login-mobile-brand .brand-mark {
+  width: 41px;
+  height: 41px;
+  padding: 2px;
+  border-radius: 9px;
+}
+
+.login-campus-art img {
+  height: 150px;
+  object-position: center 53%;
+}
+
+.login-form select,
+.user-role-select {
+  min-height: 43px;
+  padding: 9px 11px;
+  color: #405047;
+  background: #fff;
+  border: 1px solid #e2e9e3;
+  border-radius: 7px;
+}
+
+.login-mode-toggle {
+  display: block;
+  margin: 16px auto 0;
+  padding: 4px;
+  color: #18764a;
+  font-size: 11px;
+  font-weight: 600;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.login-mode-toggle:hover {
+  text-decoration: underline;
+}
+
+.login-success {
+  margin-top: 15px;
+  padding: 10px 11px;
+  color: #236a42;
+  font-size: 10px;
+  line-height: 1.5;
+  background: #eff8f0;
+  border: 1px solid #d6ecd9;
+  border-radius: 7px;
+}
+
+.login-campus-art {
+  margin-top: 22px;
+}
+
+.account-page,
+.help-center {
+  display: grid;
+  gap: 16px;
+}
+
+.account-summary,
+.help-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 18px;
+}
+
+.account-summary strong,
+.help-contact strong {
+  color: #31443a;
+  font-size: 13px;
+}
+
+.account-summary p,
+.help-intro p,
+.help-contact p {
+  margin: 5px 0 0;
+  color: #7a8a80;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.account-summary .stat-icon,
+.help-intro .stat-icon {
+  flex: 0 0 auto;
+}
+
+.user-role-select {
+  min-height: 34px;
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+.user-role-select:disabled {
+  color: #87938a;
+  background: #f5f8f5;
+}
+
+.user-status {
+  display: inline-flex;
+  padding: 5px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 20px;
+}
+
+.status-aktif {
+  color: #25724a;
+  background: #e8f5ec;
+}
+
+.status-menunggu {
+  color: #946226;
+  background: #fff3dc;
+}
+
+.status-ditolak {
+  color: #a14842;
+  background: #fff0ee;
+}
+
+.user-review-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.user-reject-button {
+  padding: 7px 9px;
+  color: #a14842;
+  font-size: 10px;
+  font-weight: 600;
+  background: #fff;
+  border: 1px solid #f0d7d4;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.user-reject-button:hover {
+  background: #fff4f2;
+}
+
+.profile-settings {
+  max-width: 760px;
+  padding: 24px;
+  border: 1px solid #e3ece5;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px #254b3108;
+}
+
+.profile-settings-heading {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #eaf0eb;
+}
+
+.profile-settings-avatar {
+  width: 48px;
+  height: 48px;
+  font-size: 14px;
+}
+
+.profile-settings-heading h2 {
+  margin: 0;
+  color: #304139;
+  font-size: 16px;
+}
+
+.profile-settings-heading p {
+  margin: 5px 0 0;
+  color: #87938a;
+  font-size: 11px;
+}
+
+.settings-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+  padding-top: 20px;
+}
+
+.settings-form label {
+  display: grid;
+  gap: 7px;
+  color: #536359;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.settings-form input {
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 11px;
+  color: #405047;
+  font-size: 11px;
+  border: 1px solid #e2e9e3;
+  border-radius: 7px;
+}
+
+.settings-form input:disabled {
+  color: #87938a;
+  background: #f4f7f4;
+}
+
+.settings-divider {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 4px;
+  padding-top: 12px;
+  border-top: 1px solid #eaf0eb;
+}
+
+.settings-divider strong {
+  color: #31443a;
+  font-size: 12px;
+}
+
+.settings-divider span {
+  color: #87938a;
+  font-size: 10px;
+}
+
+.settings-form > .primary-button {
+  width: fit-content;
+  margin-top: 3px;
+}
+
+.help-intro {
+  align-items: center;
+}
+
+.help-intro h2 {
+  margin: 0;
+  color: #31443a;
+  font-size: 16px;
+}
+
+.help-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.help-card {
+  padding: 18px;
+  border: 1px solid #e3ece5;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px #254b3108;
+}
+
+.help-card h3 {
+  margin: 12px 0 6px;
+  color: #31443a;
+  font-size: 13px;
+}
+
+.help-card p {
+  margin: 0;
+  color: #7a8a80;
+  font-size: 11px;
+  line-height: 1.75;
+}
+
+.help-contact {
+  padding: 18px;
+  border: 1px solid #e3ece5;
+  border-radius: 12px;
+}
+
+@media (max-width: 760px) {
+  .login-campus-art img {
+    height: 135px;
+  }
+
+  .settings-form,
+  .help-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-settings {
+    padding: 18px;
   }
 }

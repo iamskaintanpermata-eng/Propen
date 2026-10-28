@@ -6,6 +6,7 @@ export type User = {
   name: string
   role: UserRole
   phone: string
+  status: 'menunggu' | 'aktif' | 'ditolak'
 }
 
 export type Building = {
@@ -25,7 +26,7 @@ export type ApiReport = {
   jumlah_kantong: number
   kondisi_sampah: string
   catatan: string | null
-  url_foto_sampah: string
+  url_foto_sampah: string | null
   status_laporan: string
   gedung: Building
   petugas: { id_pengguna: string; nama_lengkap: string }
@@ -39,12 +40,19 @@ export type ApiAssignment = {
   total_rencana_kantong: number
   nama_lokasi_tpa_target: string
   status_tugas: string
-  sopir: { id_pengguna: string; nama_lengkap: string }
+  koordinat_lat_sopir: number | null
+  koordinat_long_sopir: number | null
+  waktu_lokasi_sopir: string | null
+  sopir: { id_pengguna: string; nama_lengkap: string } | null
   bentor: { plat_nomor: string; kapasitas_maks_kantong: number }
   detail_penugasan: {
     id_detail: string
     status_singgah: string
     laporan: ApiReport
+    log_penjemputan: {
+      jumlah_kantong_aktual: number
+      url_foto_jemput: string
+    } | null
   }[]
   log_pembuangan_akhir?: {
     id_log_buang: string
@@ -55,6 +63,13 @@ export type ApiAssignment = {
     url_foto_bukti_tpa: string
     status_verifikasi: string
   } | null
+}
+
+export type OfficialDisposal = {
+  name: string
+  latitude: number
+  longitude: number
+  radiusMeters: number
 }
 
 export async function apiRequest<T>(
