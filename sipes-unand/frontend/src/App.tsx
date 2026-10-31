@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Bike,
+  BellRing,
   Camera,
   Check,
   CheckCircle2,
@@ -97,11 +98,18 @@ function displayReport(report: ApiReport): Report {
   }
 }
 
+function vapidKeyToBytes(key: string) {
+  const padding = '='.repeat((4 - key.length % 4) % 4)
+  const base64 = (key + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const raw = window.atob(base64)
+  return Uint8Array.from(raw, (character) => character.charCodeAt(0))
+}
+
 function App() {
   const [token, setToken] = useState(() => localStorage.getItem('sipes-token') || '')
   const [user, setUser] = useState<User | null>(null)
   const [sessionLoading, setSessionLoading] = useState(Boolean(token))
-  const [activePage, setActivePage] = useState<Page>('Ringkasan')
+  const [activePage, setActivePage] = useState<Page>(() => new URLSearchParams(window.location.search).get('page') === 'Penugasan' ? 'Penugasan' : 'Ringkasan')
   const [reports, setReports] = useState<Report[]>([])
   const [buildings, setBuildings] = useState<Building[]>([])
   const [assignments, setAssignments] = useState<ApiAssignment[]>([])
@@ -125,6 +133,11 @@ function App() {
   const [collectionPhoto, setCollectionPhoto] = useState<File | null>(null)
   const [collectionDetail, setCollectionDetail] = useState<{ assignmentId: string; detailId: string; building: string } | null>(null)
   const [driverPosition, setDriverPosition] = useState<{ latitude: number; longitude: number } | null>(null)
+  const [pushStatus, setPushStatus] = useState<'loading' | 'disabled' | 'permission-needed' | 'denied' | 'enabled' | 'error'>('loading')
+  const [pushPublicKey, setPushPublicKey] = useState('')
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushError, setPushError] = useState('')
+  const browserSupportsPush = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
   const locationSentAt = useRef(0)
 
   useEffect(() => {
@@ -182,6 +195,60 @@ function App() {
     return () => { active = false }
   }, [token, user, refreshKey])
 
+  useEffect(() => {
+    if (user?.role !== 'sopir_bentor' || !token) return
+    if (!browserSupportsPush) return
+    let active = true
+    async function checkPushSubscription() {
+      try {
+        const config = await apiRequest<{ enabled: boolean; publicKey: string | null }>('/api/push/config', token)
+        if (!active) return
+        if (!config.enabled || !config.publicKey) {
+          setPushStatus('disabled')
+          return
+        }
+        setPushPublicKey(config.publicKey)
+        if (Notification.permission === 'denied') {
+          setPushStatus('denied')
+          return
+        }
+        if (Notification.permission !== 'granted') {
+          setPushStatus('permission-needed')
+          return
+        }
+        const registration = await navigator.serviceWorker.register('/sw.js')
+        const subscription = await registration.pushManager.getSubscription()
+        if (!active) return
+        if (!subscription) {
+          setPushStatus('permission-needed')
+          return
+        }
+        await apiRequest('/api/push/subscriptions', token, {
+          method: 'POST',
+          body: JSON.stringify(subscription.toJSON()),
+        })
+        if (active) setPushStatus('enabled')
+      } catch (cause) {
+        if (!active) return
+        setPushStatus('error')
+        setPushError((cause as Error).message)
+      }
+    }
+    void checkPushSubscription()
+    return () => { active = false }
+  }, [browserSupportsPush, token, user?.role])
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    const handleServiceWorkerMessage = (event: MessageEvent<{ type?: string }>) => {
+      if (event.data?.type !== 'new-assignment') return
+      setActivePage('Penugasan')
+      setRefreshKey((current) => current + 1)
+    }
+    navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage)
+    return () => navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage)
+  }, [])
+
   const activeDriverAssignment = user?.role === 'sopir_bentor'
     ? assignments.find((assignment) => assignment.sopir?.id_pengguna === user.id
       && ['Dalam Perjalanan', 'Penjemputan', 'Menuju Pembuangan'].includes(assignment.status_tugas))
@@ -228,6 +295,52 @@ function App() {
     setRefreshKey((current) => current + 1)
   }
 
+  async function togglePushNotifications() {
+    if (pushBusy || !token) return
+    setPushBusy(true)
+    setPushError('')
+    try {
+      if (pushStatus === 'enabled') {
+        const registration = await navigator.serviceWorker.getRegistration('/')
+        const subscription = await registration?.pushManager.getSubscription()
+        if (subscription) {
+          await apiRequest('/api/push/subscriptions', token, {
+            method: 'DELETE',
+            body: JSON.stringify({ endpoint: subscription.endpoint }),
+          })
+          await subscription.unsubscribe()
+        }
+        setPushStatus('permission-needed')
+        notify('Notifikasi tugas dinonaktifkan pada perangkat ini.')
+        return
+      }
+      if (!pushPublicKey) {
+        throw new Error('Notifikasi push belum dikonfigurasi oleh administrator.')
+      }
+      const permission = await Notification.requestPermission()
+      if (permission !== 'granted') {
+        setPushStatus(permission === 'denied' ? 'denied' : 'permission-needed')
+        return
+      }
+      const registration = await navigator.serviceWorker.register('/sw.js')
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: vapidKeyToBytes(pushPublicKey),
+      })
+      await apiRequest('/api/push/subscriptions', token, {
+        method: 'POST',
+        body: JSON.stringify(subscription.toJSON()),
+      })
+      setPushStatus('enabled')
+      notify('Notifikasi penugasan aktif di perangkat ini.')
+    } catch (cause) {
+      setPushStatus('error')
+      setPushError((cause as Error).message)
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
   function signOut() {
     localStorage.removeItem('sipes-token')
     setToken('')
@@ -239,6 +352,9 @@ function App() {
     setDisposals([])
     setOfficialDisposal(null)
     setDriverPosition(null)
+    setPushStatus('loading')
+    setPushPublicKey('')
+    setPushError('')
     setStats({ totalReports: 0, waiting: 0, assigned: 0, completed: 0, activeTasks: 0, verifiedDisposals: 0 })
     setActivePage('Ringkasan')
     setError('')
@@ -247,6 +363,9 @@ function App() {
   function acceptLogin(nextToken: string, nextUser: User) {
     localStorage.setItem('sipes-token', nextToken)
     setError('')
+    setPushStatus('loading')
+    setPushPublicKey('')
+    setPushError('')
     setUser(nextUser)
     setToken(nextToken)
     setActivePage(nextUser.role === 'sopir_bentor' ? 'Penugasan' : 'Ringkasan')
@@ -437,7 +556,20 @@ function App() {
         <header className="topbar">
           <button className="mobile-menu" aria-label="Buka navigasi" onClick={() => setMobileNavOpen(true)}><Menu size={21} /></button>
           <div className="breadcrumb"><span>Workspace</span><ChevronRight size={14} /><strong>{activePage}</strong></div>
-          <div className="topbar-actions"><span className="campus-status"><span /> Sistem terhubung</span><button className="top-profile" onClick={() => setActivePage('Profil saya')}><span className="avatar avatar-small">{user.name.slice(0, 1).toUpperCase()}</span><span>{user.name}</span><UserRound size={15} /></button></div>
+          <div className="topbar-actions"><span className="campus-status"><span /> Sistem terhubung</span>
+            {user.role === 'sopir_bentor' && <div className="push-controls">
+              <button
+                className={`push-button ${pushStatus === 'enabled' ? 'push-button-enabled' : ''}`}
+                onClick={() => void togglePushNotifications()}
+                disabled={pushBusy || !browserSupportsPush || ['loading', 'disabled', 'denied'].includes(pushStatus)}
+                title={pushError || (pushStatus === 'denied' ? 'Izinkan notifikasi dari pengaturan browser.' : undefined)}
+              >
+                <BellRing size={16} />
+                <span>{pushBusy ? 'Memproses...' : pushStatus === 'enabled' ? 'Notifikasi aktif' : pushStatus === 'disabled' ? 'Push belum dikonfigurasi' : !browserSupportsPush ? 'Push tidak didukung' : pushStatus === 'denied' ? 'Izin notifikasi ditolak' : 'Aktifkan notifikasi tugas'}</span>
+              </button>
+              {pushError && <span className="push-error" role="status">{pushError}</span>}
+            </div>}
+            <button className="top-profile" onClick={() => setActivePage('Profil saya')}><span className="avatar avatar-small">{user.name.slice(0, 1).toUpperCase()}</span><span>{user.name}</span><UserRound size={15} /></button></div>
         </header>
         <div className="page-content">
           <section className={`page-heading ${activePage === 'Ringkasan' ? 'page-heading-dashboard' : ''}`}>

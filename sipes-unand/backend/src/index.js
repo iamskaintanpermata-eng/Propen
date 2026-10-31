@@ -9,6 +9,7 @@ import cors from 'cors';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
+import webPush from 'web-push';
 import { Prisma, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -26,6 +27,16 @@ const disposalLongitude = process.env.OFFICIAL_DISPOSAL_LONGITUDE === undefined 
   ? null
   : Number(process.env.OFFICIAL_DISPOSAL_LONGITUDE);
 const disposalRadiusMeters = Number(process.env.OFFICIAL_DISPOSAL_RADIUS_METERS || 100);
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY || '';
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || '';
+const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:admin@sipes-unand.local';
+if (Boolean(vapidPublicKey) !== Boolean(vapidPrivateKey)) {
+  throw new Error('VAPID_PUBLIC_KEY dan VAPID_PRIVATE_KEY harus diatur bersamaan.');
+}
+const pushNotificationsEnabled = Boolean(vapidPublicKey && vapidPrivateKey);
+if (pushNotificationsEnabled) {
+  webPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+}
 const allowedOrigins = (process.env.FRONTEND_ORIGIN || 'http://localhost:5173,http://127.0.0.1:5173')
   .split(',')
   .map((origin) => origin.trim());
@@ -282,9 +293,48 @@ async function createAutomaticAssignmentsNow() {
   return createdAssignments;
 }
 
+async function notifyDriversAboutAssignments(assignments) {
+  if (!pushNotificationsEnabled || assignments.length === 0) return;
+  let subscriptions;
+  try {
+    subscriptions = await prisma.langgananPush.findMany();
+  } catch (error) {
+    console.error('Gagal membaca langganan notifikasi push:', error);
+    return;
+  }
+  await Promise.all(subscriptions.map(async (subscription) => {
+    for (const assignment of assignments) {
+      try {
+        const buildings = [...new Set(assignment.detail_penugasan.map((detail) => detail.laporan.gedung.nama_gedung))];
+        await webPush.sendNotification({
+          endpoint: subscription.endpoint,
+          keys: { p256dh: subscription.p256dh, auth: subscription.auth },
+        }, JSON.stringify({
+          title: 'Penugasan pengangkutan baru',
+          body: `${assignment.total_rencana_kantong} kantong sampah di ${buildings.join(', ')}. Buka SIPES untuk mengambil tugas.`,
+          url: '/?page=Penugasan',
+          tag: `assignment-${assignment.id_penugasan}`,
+        }));
+      } catch (error) {
+        if (error.statusCode === 404 || error.statusCode === 410) {
+          await prisma.langgananPush.deleteMany({ where: { id_langganan: subscription.id_langganan } }).catch((deleteError) => {
+            console.error(`Gagal menghapus langganan push yang kedaluwarsa ${subscription.id_langganan}:`, deleteError);
+          });
+          return;
+        }
+        console.error(`Gagal mengirim notifikasi push untuk langganan ${subscription.id_langganan}:`, error);
+      }
+    }
+  }));
+}
+
 let assignmentGeneration = Promise.resolve();
 function generateAutomaticAssignments() {
-  const generation = assignmentGeneration.then(createAutomaticAssignmentsNow);
+  const generation = assignmentGeneration.then(async () => {
+    const assignments = await createAutomaticAssignmentsNow();
+    await notifyDriversAboutAssignments(assignments);
+    return assignments;
+  });
   assignmentGeneration = generation.catch((error) => {
     console.error('Gagal membuat penugasan otomatis:', error);
   });
@@ -308,6 +358,78 @@ app.get('/api/config', requireAuth, (_request, response) => {
       ? { name: disposalName, latitude: disposalLatitude, longitude: disposalLongitude, radiusMeters: disposalRadiusMeters }
       : null,
   });
+});
+
+app.get('/api/push/config', requireAuth, allowRoles('sopir_bentor'), (_request, response) => {
+  response.json({ enabled: pushNotificationsEnabled, publicKey: pushNotificationsEnabled ? vapidPublicKey : null });
+});
+
+app.post('/api/push/subscriptions', requireAuth, allowRoles('sopir_bentor'), async (request, response, next) => {
+  try {
+    if (!pushNotificationsEnabled) {
+      response.status(503).json({ error: 'Notifikasi push belum dikonfigurasi oleh administrator.' });
+      return;
+    }
+    const endpoint = String(request.body?.endpoint || '').trim();
+    const p256dh = String(request.body?.keys?.p256dh || '').trim();
+    const auth = String(request.body?.keys?.auth || '').trim();
+    let parsedEndpoint;
+    try {
+      parsedEndpoint = new URL(endpoint);
+    } catch {
+      response.status(400).json({ error: 'Alamat langganan notifikasi tidak valid.' });
+      return;
+    }
+    const allowedPushHost = parsedEndpoint.hostname === 'fcm.googleapis.com'
+      || parsedEndpoint.hostname.endsWith('.fcm.googleapis.com')
+      || parsedEndpoint.hostname.endsWith('.push.services.mozilla.com')
+      || parsedEndpoint.hostname.endsWith('.push.apple.com')
+      || parsedEndpoint.hostname.endsWith('.notify.windows.com');
+    const validKeys = /^[A-Za-z0-9_-]+$/.test(p256dh)
+      && p256dh.length >= 20
+      && p256dh.length <= 200
+      && /^[A-Za-z0-9_-]+$/.test(auth)
+      && auth.length >= 16
+      && auth.length <= 100;
+    if (parsedEndpoint.protocol !== 'https:' || parsedEndpoint.username || parsedEndpoint.password
+      || !allowedPushHost || endpoint.length > 2048 || !validKeys) {
+      response.status(400).json({ error: 'Alamat atau kunci langganan notifikasi tidak valid.' });
+      return;
+    }
+    await prisma.langgananPush.upsert({
+      where: { endpoint },
+      create: {
+        id_pengguna: request.user.id,
+        endpoint,
+        p256dh,
+        auth,
+      },
+      update: {
+        id_pengguna: request.user.id,
+        p256dh,
+        auth,
+      },
+    });
+    response.status(201).json({ message: 'Notifikasi tugas berhasil diaktifkan pada perangkat ini.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete('/api/push/subscriptions', requireAuth, allowRoles('sopir_bentor'), async (request, response, next) => {
+  try {
+    const endpoint = String(request.body?.endpoint || '').trim();
+    if (!endpoint || endpoint.length > 2048) {
+      response.status(400).json({ error: 'Alamat langganan notifikasi tidak valid.' });
+      return;
+    }
+    await prisma.langgananPush.deleteMany({
+      where: { id_pengguna: request.user.id, endpoint },
+    });
+    response.json({ message: 'Notifikasi tugas dinonaktifkan pada perangkat ini.' });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.post('/api/auth/login', async (request, response, next) => {

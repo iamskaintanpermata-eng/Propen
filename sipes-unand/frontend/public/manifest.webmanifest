@@ -1,0 +1,17 @@
+{
+  "name": "SIPES UNAND",
+  "short_name": "SIPES",
+  "description": "Sistem Informasi Pengelolaan Sampah Universitas Andalas",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f9f7",
+  "theme_color": "#f7f9f7",
+  "icons": [
+    {
+      "src": "/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

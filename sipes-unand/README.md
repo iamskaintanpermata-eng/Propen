@@ -50,6 +50,20 @@ Izinkan akses kamera dan lokasi pada peramban saat diminta. Kamera tersedia mela
 
 Pilihan gedung dan titik peta diambil dari tabel gedung. Database lokal saat ini berisi enam titik seed; masukkan nama dan koordinat resmi Gedung Perkuliahan A–J sebelum operasional agar laporan dan rute memakai lokasi yang benar.
 
+## Notifikasi penugasan untuk sopir bentor
+
+Sopir dapat mengaktifkan **Notifikasi tugas** dari aplikasi pada ponsel. Saat laporan yang terkumpul membentuk penugasan baru, SIPES mengirim notifikasi ke perangkat sopir yang sudah berlangganan; notifikasi dapat diterima ketika aplikasi tidak sedang terbuka. Notifikasi hanya dikirim setelah pengguna mengizinkan notifikasi pada browser.
+
+Untuk mengaktifkannya di server:
+
+1. Jalankan `npx web-push generate-vapid-keys` dari folder `backend`, lalu simpan nilai public dan private key ke `VAPID_PUBLIC_KEY` dan `VAPID_PRIVATE_KEY` di `backend\.env`. Simpan private key sebagai rahasia dan gunakan pasangan kunci yang sama selama aplikasi berjalan.
+2. Pastikan `VAPID_SUBJECT` berisi alamat kontak yang dapat dihubungi, misalnya `mailto:admin@unand.ac.id`.
+3. Hentikan backend, lalu terapkan model langganan push baru ke database dengan `npm --prefix backend run setup:db`.
+4. Jalankan kembali backend dan buka aplikasi melalui HTTPS. `localhost` juga diizinkan untuk uji lokal.
+5. Login sebagai sopir bentor di ponsel, tekan **Aktifkan notifikasi tugas**, lalu izinkan notifikasi pada browser.
+
+Di iPhone/iPad, web push tersedia pada iOS/iPadOS 16.4 atau lebih baru untuk aplikasi web yang sudah ditambahkan ke Layar Utama. Notifikasi push memerlukan koneksi internet dan dapat ditahan oleh pengaturan hemat baterai atau izin browser.
+
 Sebelum sopir dapat menyelesaikan perjalanan, isi koordinat PPST UNAND yang benar pada `backend\.env`:
 
 ```dotenv

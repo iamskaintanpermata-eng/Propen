@@ -293,6 +293,58 @@
   gap: 17px;
 }
 
+.push-controls {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.push-button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  color: #39714b;
+  font-size: 10px;
+  font-weight: 600;
+  background: #f0f7f1;
+  border: 1px solid #dcebe0;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.push-button:hover:not(:disabled) {
+  background: #e6f2e8;
+}
+
+.push-button:disabled {
+  color: #7d8b81;
+  cursor: not-allowed;
+}
+
+.push-button-enabled {
+  color: #236d43;
+  background: #e7f4e9;
+}
+
+.push-error {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  width: max-content;
+  max-width: min(320px, 80vw);
+  padding: 8px 10px;
+  color: #8c3c32;
+  font-size: 10px;
+  line-height: 1.4;
+  background: #fff;
+  border: 1px solid #f0d7d4;
+  border-radius: 7px;
+  box-shadow: 0 5px 16px #39271e14;
+}
+
 .campus-status {
   gap: 7px;
   color: #607168;
@@ -3146,6 +3198,22 @@ td > small span {
   }
 }
 
+@media (max-width: 900px) {
+  .campus-status {
+    display: none;
+  }
+
+  .push-button {
+    width: 36px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .push-button > span {
+    display: none;
+  }
+}
+
 @media (max-width: 760px) {
   .sidebar {
     z-index: 31;
@@ -3201,6 +3269,16 @@ td > small span {
   .topbar-divider,
   .top-profile > span:nth-child(2),
   .top-profile > svg {
+    display: none;
+  }
+
+  .push-button {
+    width: 36px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .push-button > span {
     display: none;
   }
 

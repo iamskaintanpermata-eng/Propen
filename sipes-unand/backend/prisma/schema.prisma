@@ -25,6 +25,7 @@ model Pengguna {
   penugasan_dikelola     PenugasanPengangkutan[] @relation("AdminPenugasan")
   penugasan_dikendarai   PenugasanPengangkutan[] @relation("SopirPenugasan")
   verifikasi_pembuangan  LogPembuanganAkhir[]    @relation("AdminVerifikator")
+  langganan_push        LanggananPush[]
 
   @@map("PENGGUNA")
 }
@@ -145,4 +146,19 @@ model LogPembuanganAkhir {
   admin_verifikator       Pengguna?             @relation("AdminVerifikator", fields: [id_admin_verifikator], references: [id_pengguna])
 
   @@map("LOG_PEMBUANGAN_AKHIR")
+}
+
+model LanggananPush {
+  id_langganan  String   @id @default(cuid()) @map("id_langganan")
+  id_pengguna   String   @map("id_pengguna")
+  endpoint      String   @unique @map("endpoint")
+  p256dh        String   @map("p256dh")
+  auth          String   @map("auth")
+  created_at    DateTime @default(now()) @map("created_at")
+  updated_at    DateTime @updatedAt @map("updated_at")
+
+  pengguna      Pengguna @relation(fields: [id_pengguna], references: [id_pengguna], onDelete: Cascade)
+
+  @@index([id_pengguna])
+  @@map("LANGGANAN_PUSH")
 }

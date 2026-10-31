@@ -1,0 +1,12 @@
+# Environment variables
+sipes-unand/backend/.env
+
+# Dependencies and generated Prisma client
+sipes-unand/backend/node_modules/
+
+# Local database
+sipes-unand/backend/prisma/dev.db
+
+# Uploaded files
+sipes-unand/uploads/
+sipes-unand/backend/uploads/
