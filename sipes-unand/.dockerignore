@@ -1,0 +1,8 @@
+.git
+**/node_modules
+**/dist
+**/*.log
+backend/.env
+backend/prisma/dev.db*
+backend/.photo-backups
+uploads

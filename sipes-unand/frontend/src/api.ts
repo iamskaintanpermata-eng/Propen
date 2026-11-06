@@ -87,7 +87,7 @@ export async function apiRequest<T>(
   try {
     response = await fetch(path, { ...init, headers })
   } catch {
-    throw new Error('Tidak dapat terhubung ke server. Pastikan backend SIPES berjalan di localhost:5000.')
+    throw new Error('Tidak dapat terhubung ke server SIPES. Periksa koneksi internet atau coba lagi.')
   }
 
   const payload = await response.json().catch(() => ({})) as { error?: string }
