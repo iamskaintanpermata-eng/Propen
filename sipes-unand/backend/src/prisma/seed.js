@@ -1,10 +1,18 @@
 import { PrismaClient } from '@prisma/client';
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('Seeding SIPES UNAND database...');
+  const production = process.env.NODE_ENV === 'production';
+  const initialAdmin = {
+    username: process.env.INITIAL_ADMIN_USERNAME,
+    password: process.env.INITIAL_ADMIN_PASSWORD,
+    name: process.env.INITIAL_ADMIN_NAME,
+    phone: process.env.INITIAL_ADMIN_PHONE,
+  };
 
   const buildings = [
     {
@@ -115,6 +123,28 @@ async function main() {
 
   if (await prisma.pengguna.count() > 0) {
     console.log('Data referensi gedung dan armada diperbarui tanpa mengubah pengguna atau data operasional.');
+    return;
+  }
+
+  if (production) {
+    if (Object.values(initialAdmin).some((value) => !value?.trim())) {
+      throw new Error('Production seed memerlukan INITIAL_ADMIN_USERNAME, INITIAL_ADMIN_PASSWORD, INITIAL_ADMIN_NAME, dan INITIAL_ADMIN_PHONE.');
+    }
+    if (initialAdmin.password.length < 16) {
+      throw new Error('INITIAL_ADMIN_PASSWORD harus memiliki minimal 16 karakter.');
+    }
+    await prisma.pengguna.create({
+      data: {
+        id_pengguna: `USR-ADM-${crypto.randomBytes(6).toString('hex').toUpperCase()}`,
+        username: initialAdmin.username.trim(),
+        password: await bcrypt.hash(initialAdmin.password, 12),
+        nama_lengkap: initialAdmin.name.trim(),
+        nomor_kontak: initialAdmin.phone.trim(),
+        peran: 'admin',
+        status_akun: 'aktif',
+      },
+    });
+    console.log('Production admin account created from one-time bootstrap credentials.');
     return;
   }
 

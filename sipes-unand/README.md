@@ -2,34 +2,71 @@
 
 ## Menjalankan aplikasi lokal
 
-1. Pastikan Node.js sudah terpasang.
-2. Pasang dependensi jika ini pertama kali dijalankan:
+Persyaratan: Node.js/npm dan Docker Desktop dengan Docker Compose aktif.
 
-   ```powershell
-   npm --prefix frontend install
-   npm --prefix backend install
-   ```
-3. Jika `backend\.env` belum ada, salin konfigurasi lokal:
+1. Jika `backend\.env` belum ada, salin template:
 
    ```powershell
    Copy-Item .env.example backend\.env
    ```
-4. Inisialisasi database, akun demo, data gedung, dan armada dari folder proyek:
+2. Buat skema PostgreSQL dan data demo. Data yang sudah ada tidak dihapus:
 
    ```powershell
    npm run setup:db
    ```
-
-   Database baru berisi akun dan data referensi gedung/armada. Seed dilewati jika basis data sudah memiliki pengguna, sehingga data yang sudah ada tidak dihapus.
-5. Jalankan frontend dan backend bersama-sama:
+3. Jalankan aplikasi dalam Docker:
 
    ```powershell
    npm run dev
    ```
-6. Buka `http://localhost:5173`. API tersedia di `http://localhost:5000/api/health`.
-7. Hentikan kedua layanan dengan `Ctrl+C`.
+   Buka `http://localhost:8080`; API tersedia di `http://localhost:8080/api/health`. Image aplikasi dibangun dari kode terkini. Setelah mengubah kode, hentikan (`Ctrl+C`) dan jalankan ulang `npm run dev` untuk membangun image baru.
+4. Hentikan layanan dengan `Ctrl+C`. Data PostgreSQL dan foto tetap tersimpan di volume Docker. `npm run db:down` hanya menghentikan PostgreSQL.
 
-Untuk menjalankan frontend atau backend secara terpisah gunakan `npm run dev:frontend` atau `npm run dev:backend`.
+Untuk memindahkan database SQLite lain yang sudah berisi data, mulai PostgreSQL dan terapkan migrasi dahulu:
+
+```powershell
+npm run db:up
+npm run deploy:local
+docker compose --env-file backend/.env run --rm --no-deps -v "D:\path\ke\dev.db:/data/dev.db:ro" app node src/prisma/migrate-sqlite.js --source /data/dev.db
+```
+
+Ganti path dengan lokasi file SQLite sumber. Importer menyalin seluruh record dalam satu transaksi hanya jika PostgreSQL masih kosong; file SQLite sumber tidak diubah. Jangan jalankan seed sebelum impor.
+
+## Menguji image deployment lokal
+
+Untuk menjalankan image produksi di latar belakang:
+
+```powershell
+npm run deploy:local
+```
+
+Buka `http://localhost:8080`. Image otomatis menerapkan migrasi Prisma saat startup. Docker Compose menyimpan database dan foto di volume persisten. Perintah `docker compose --env-file backend/.env down` tidak menghapus volume; **jangan gunakan `down -v` kecuali memang ingin menghapus semua data**.
+
+## Deployment publik di VPS
+
+Konfigurasi sudah menyiapkan PostgreSQL, backend, frontend hasil build, volume foto persisten, dan Caddy untuk HTTPS otomatis. Untuk dipublikasikan, gunakan VPS dengan Docker Compose, arahkan DNS domain ke IP VPS, dan izinkan koneksi masuk pada port 80/443.
+
+Di server, buat `backend/.env` dari `.env.example`, lalu ganti `POSTGRES_PASSWORD` dengan kata sandi acak yang kuat (gunakan karakter huruf/angka agar URL koneksi tidak perlu encoding), buat `JWT_SECRET` acak minimal 32 karakter, serta isi `APP_DOMAIN=domain-anda` dan `BASE_URL=https://domain-anda`. Jangan gunakan kredensial demo atau database lokal untuk server publik. Arahkan DNS domain ke IP server dan izinkan port 80/443. Jalankan dahulu hanya database dan aplikasi; aplikasi hanya terikat ke localhost:
+
+```sh
+docker compose --env-file backend/.env up -d --build db app
+```
+
+Untuk database baru, isi sementara `INITIAL_ADMIN_USERNAME`, `INITIAL_ADMIN_PASSWORD` (minimal 16 karakter), `INITIAL_ADMIN_NAME`, dan `INITIAL_ADMIN_PHONE` di `backend/.env`, lalu buat akun admin sebelum membuka akses publik:
+
+```sh
+docker compose --env-file backend/.env run --rm --no-deps app node src/prisma/seed.js
+```
+
+Seed production hanya membuat akun admin tersebut; akun demo lokal tidak dibuat. Hapus nilai bootstrap dari file setelah akun berhasil dibuat, lalu aktifkan Caddy:
+
+```sh
+docker compose --env-file backend/.env --profile public up -d caddy
+```
+
+Caddy akan meminta dan memperbarui sertifikat HTTPS. Jika memakai database yang sudah berisi data, pastikan tidak ada akun demo atau kata sandi bawaan sebelum mengaktifkan akses publik.
+
+Pastikan backup PostgreSQL dan volume foto dilakukan terpisah dan diuji sebelum operasional. Jangan deploy database SQLite pengembangan beserta akun demo ke server publik.
 
 ## Akun demo lokal
 
@@ -46,9 +83,9 @@ Untuk menjalankan frontend atau backend secara terpisah gunakan `npm run dev:fro
 - **Sopir bentor:** ambil satu penugasan yang tersedia, jalankan perjalanan, konfirmasi jumlah aktual dan foto di setiap gedung, lalu menuju PPST UNAND untuk mengirim bukti pembuangan.
 - **Admin:** pantau laporan, armada, rute, posisi GPS sopir, bukti pengambilan, dan bukti pembuangan; admin memverifikasi pembuangan dan tidak membuat penugasan manual.
 
-Izinkan akses kamera dan lokasi pada peramban saat diminta. Kamera tersedia melalui `localhost` atau HTTPS. Foto dibatasi 8 MB dan disimpan di folder `uploads`. Peta satelit memakai Esri World Imagery, peta jalan memakai OpenStreetMap, dan rute jalan memakai layanan OSRM; semuanya membutuhkan koneksi internet. Gunakan pemilih layer di pojok kanan atas peta untuk beralih antara tampilan satelit dan peta jalan.
+Izinkan akses kamera dan lokasi pada peramban saat diminta. Kamera tersedia melalui `localhost` atau HTTPS. Foto dibatasi 8 MB, dikelompokkan menurut jenis dan bulan, dan disimpan di volume persisten Docker. Peta satelit memakai Esri World Imagery, peta jalan memakai OpenStreetMap, dan rute jalan memakai layanan OSRM; semuanya membutuhkan koneksi internet. Gunakan pemilih layer di pojok kanan atas peta untuk beralih antara tampilan satelit dan peta jalan.
 
-Pilihan gedung dan titik peta diambil dari tabel gedung. Database lokal saat ini berisi enam titik seed; masukkan nama dan koordinat resmi Gedung Perkuliahan A–J sebelum operasional agar laporan dan rute memakai lokasi yang benar.
+Pilihan gedung dan titik peta diambil dari tabel gedung. Data seed memuat Gedung Perkuliahan A–J; pastikan nama dan koordinat resmi sudah benar sebelum operasional agar laporan dan rute memakai lokasi yang sesuai.
 
 ## Notifikasi penugasan untuk sopir bentor
 
@@ -58,8 +95,8 @@ Untuk mengaktifkannya di server:
 
 1. Jalankan `npx web-push generate-vapid-keys` dari folder `backend`, lalu simpan nilai public dan private key ke `VAPID_PUBLIC_KEY` dan `VAPID_PRIVATE_KEY` di `backend\.env`. Simpan private key sebagai rahasia dan gunakan pasangan kunci yang sama selama aplikasi berjalan.
 2. Pastikan `VAPID_SUBJECT` berisi alamat kontak yang dapat dihubungi, misalnya `mailto:admin@unand.ac.id`.
-3. Hentikan backend, lalu terapkan model langganan push baru ke database dengan `npm --prefix backend run setup:db`.
-4. Jalankan kembali backend dan buka aplikasi melalui HTTPS. `localhost` juga diizinkan untuk uji lokal.
+3. Jalankan `npm run setup:db` untuk menerapkan migrasi database.
+4. Jalankan kembali aplikasi dan buka melalui HTTPS. `localhost` juga diizinkan untuk uji lokal.
 5. Login sebagai sopir bentor di ponsel, tekan **Aktifkan notifikasi tugas**, lalu izinkan notifikasi pada browser.
 
 Di iPhone/iPad, web push tersedia pada iOS/iPadOS 16.4 atau lebih baru untuk aplikasi web yang sudah ditambahkan ke Layar Utama. Notifikasi push memerlukan koneksi internet dan dapat ditahan oleh pengaturan hemat baterai atau izin browser.
@@ -79,4 +116,4 @@ Gedung A–J dan PPST UNAND menggunakan koordinat yang telah dikonfirmasi untuk 
 ## Teknologi
 
 - React, TypeScript, Vite, Leaflet / Esri World Imagery / OpenStreetMap
-- Express, Prisma, SQLite, JWT
+- Express, Prisma, PostgreSQL, Docker Compose, Caddy, JWT

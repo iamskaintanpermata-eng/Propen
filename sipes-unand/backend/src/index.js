@@ -18,6 +18,7 @@ const port = Number(process.env.PORT || 5000);
 const jwtSecret = process.env.JWT_SECRET;
 const baseDirectory = path.dirname(fileURLToPath(import.meta.url));
 const uploadDirectory = path.resolve(process.cwd(), process.env.UPLOAD_DIR || '../uploads');
+const frontendDirectory = path.resolve(baseDirectory, '../../frontend/dist');
 const assignmentLoadPercent = Number(process.env.AUTO_ASSIGNMENT_LOAD_PERCENT || 80);
 const disposalName = process.env.OFFICIAL_DISPOSAL_NAME || 'PPST UNAND';
 const disposalLatitude = process.env.OFFICIAL_DISPOSAL_LATITUDE === undefined || process.env.OFFICIAL_DISPOSAL_LATITUDE === ''
@@ -49,45 +50,79 @@ fs.mkdirSync(uploadDirectory, { recursive: true });
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json({ limit: '1mb' }));
 app.use('/uploads', express.static(uploadDirectory, { dotfiles: 'deny', index: false }));
-
-const storage = multer.diskStorage({
-  destination: (_request, _file, callback) => callback(null, uploadDirectory),
-  filename: (_request, file, callback) => {
-    const extensions = {
-      'image/jpeg': '.jpg',
-      'image/png': '.png',
-      'image/webp': '.webp',
-      'application/pdf': '.pdf',
-    };
-    const extension = extensions[file.mimetype] || '';
-    callback(null, `${crypto.randomUUID()}${extension}`);
-  },
-});
+if (fs.existsSync(frontendDirectory)) {
+  app.use(express.static(frontendDirectory));
+  app.get('*', (request, response, next) => {
+    if (request.path.startsWith('/api/') || request.path.startsWith('/uploads/')) {
+      next();
+      return;
+    }
+    response.sendFile(path.join(frontendDirectory, 'index.html'));
+  });
+}
 
 const imageAndDocumentTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 const imageTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const uploader = multer({
-  storage,
-  limits: { fileSize: 8 * 1024 * 1024, files: 1 },
-  fileFilter: (_request, file, callback) => {
-    if (!imageAndDocumentTypes.has(file.mimetype)) {
-      callback(new Error('Format file tidak didukung. Gunakan JPG, PNG, WebP, atau PDF.'));
-      return;
-    }
-    callback(null, true);
-  },
-});
-const uploadImage = multer({
-  storage,
-  limits: { fileSize: 8 * 1024 * 1024, files: 1 },
-  fileFilter: (_request, file, callback) => {
-    if (!imageTypes.has(file.mimetype)) {
-      callback(new Error('Bukti foto harus berformat JPG, PNG, atau WebP.'));
-      return;
-    }
-    callback(null, true);
-  },
-});
+const uploadExtensions = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'application/pdf': '.pdf',
+};
+
+function createUploadMiddleware(allowedTypes, category, typeError) {
+  const uploadDates = new WeakMap();
+  const storage = multer.diskStorage({
+    destination: (request, _file, callback) => {
+      const date = new Date();
+      uploadDates.set(request, date);
+      const directory = path.join(
+        uploadDirectory,
+        category,
+        String(date.getUTCFullYear()),
+        String(date.getUTCMonth() + 1).padStart(2, '0'),
+      );
+      fs.mkdir(directory, { recursive: true }, (error) => callback(error, directory));
+    },
+    filename: (request, file, callback) => {
+      const date = uploadDates.get(request);
+      if (!date) {
+        callback(new Error('Tanggal unggahan tidak tersedia.'));
+        return;
+      }
+      const datePrefix = date.toISOString().slice(0, 10).replaceAll('-', '');
+      callback(null, `${datePrefix}-${crypto.randomUUID()}${uploadExtensions[file.mimetype] || ''}`);
+    },
+  });
+
+  return multer({
+    storage,
+    limits: { fileSize: 8 * 1024 * 1024, files: 1 },
+    fileFilter: (_request, file, callback) => {
+      if (!allowedTypes.has(file.mimetype)) {
+        callback(new Error(typeError));
+        return;
+      }
+      callback(null, true);
+    },
+  }).single(category === 'laporan' ? 'lampiran' : 'foto');
+}
+
+const uploadReport = createUploadMiddleware(
+  imageAndDocumentTypes,
+  'laporan',
+  'Format file tidak didukung. Gunakan JPG, PNG, WebP, atau PDF.',
+);
+const uploadCollectionPhoto = createUploadMiddleware(
+  imageTypes,
+  'penjemputan',
+  'Bukti foto harus berformat JPG, PNG, atau WebP.',
+);
+const uploadDisposalPhoto = createUploadMiddleware(
+  imageTypes,
+  'pembuangan',
+  'Bukti foto harus berformat JPG, PNG, atau WebP.',
+);
 
 function publicUser(user) {
   return {
@@ -146,7 +181,8 @@ function validateInteger(value, label, { min = 1, max = 10000 } = {}) {
 
 function attachmentUrl(request) {
   if (!request.file) return null;
-  return `/uploads/${request.file.filename}`;
+  const relativePath = path.relative(uploadDirectory, request.file.path).split(path.sep).join('/');
+  return `/uploads/${relativePath}`;
 }
 
 function discardUpload(request) {
@@ -684,7 +720,7 @@ app.post(
   '/api/laporan',
   requireAuth,
   allowRoles('petugas_gedung'),
-  uploader.single('lampiran'),
+  uploadReport,
   async (request, response, next) => {
     try {
       if (request.file) await validateUpload(request.file, imageAndDocumentTypes);
@@ -843,7 +879,7 @@ app.post(
   '/api/penugasan/:id/penjemputan/:detailId',
   requireAuth,
   allowRoles('sopir_bentor'),
-  uploadImage.single('foto'),
+  uploadCollectionPhoto,
   async (request, response, next) => {
     try {
       if (!request.file) {
@@ -915,7 +951,7 @@ app.post(
   '/api/penugasan/:id/bukti',
   requireAuth,
   allowRoles('sopir_bentor'),
-  uploadImage.single('foto'),
+  uploadDisposalPhoto,
   async (request, response, next) => {
     try {
       if (!request.file) {
@@ -1114,7 +1150,7 @@ app.use((error, request, response, _next) => {
 });
 
 const server = app.listen(port, () => {
-  console.log(`SIPES UNAND API berjalan di http://localhost:${port}`);
+  console.log(`SIPES UNAND API berjalan di port ${port}`);
   generateAutomaticAssignments().catch((error) => {
     console.error('Gagal memproses akumulasi laporan saat backend dimulai:', error);
   });
